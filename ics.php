@@ -1,0 +1,81 @@
+<?php
+
+mysql_connect("localhost", "root", "abigfuckupinaugust");
+mysql_select_db("rex");
+$id = mysql_real_escape_string($_GET['id']);
+
+$query = mysql_query("SELECT e.ID, e.Day, e.`Event`, e.Location, e.Dorm, e.Room, l.lat, l.lng, l.Building, l.Address, l.img, e.Description, e.`Start Time`, e.`End Time`, e.Start, e.End FROM events AS e LEFT JOIN locations as l ON e.Dorm=l.place WHERE e.ID = ". $id .";");
+$row = mysql_fetch_array($query);
+
+
+ //Variables used in this script:
+  $summary = $row['Event'];
+  $datestart = $row['Start Time'];
+  $dateend = $row['End Time'];
+  $address = $row['Address'];
+  $uri = "http://www.abartow.com/rex/item.php?id=$id";
+  $description = $row['Event'];
+  $filename  = "Guide 42 Event $id.ics";
+
+//
+// Notes:
+//  - the UID should be unique to the event, so in this case I'm just using
+//    uniqid to create a uid, but you could do whatever you'd like.
+//
+//  - iCal requires a date format of "yyyymmddThhiissZ". The "T" and "Z"
+//    characters are not placeholders, just plain ol' characters. The "T"
+//    character acts as a delimeter between the date (yyyymmdd) and the time
+//    (hhiiss), and the "Z" states that the date is in UTC time. Note that if
+//    you don't want to use UTC time, you must prepend your date-time values
+//    with a TZID property. See RFC 5545 section 3.3.5
+//
+//  - The Content-Disposition: attachment; header tells the browser to save/open
+//    the file. The filename param sets the name of the file, so you could set
+//    it as "my-event-name.ics" or something similar.
+//
+//  - Read up on RFC 5545, the iCalendar specification. There is a lot of helpful
+//    info in there, such as formatting rules. There are also many more options
+//    to set, including alarms, invitees, busy status, etc.
+//
+//      https://www.ietf.org/rfc/rfc5545.txt
+ 
+// 1. Set the correct headers for this file
+header('Content-type: text/calendar; charset=utf-8');
+header('Content-Disposition: attachment; filename=' . $filename);
+ 
+// 2. Define helper functions
+ 
+// Converts a unix timestamp to an ics-friendly format
+// NOTE: "Z" means that this timestamp is a UTC timestamp. If you need
+// to set a locale, remove the "\Z" and modify DTEND, DTSTAMP and DTSTART
+// with TZID properties (see RFC 5545 section 3.3.5 for info)
+//
+// Also note that we are using "H" instead of "g" because iCalendar's Time format
+// requires 24-hour time (see RFC 5545 section 3.3.12 for info).
+function dateToCal($timestamp) {
+  return date('Ymd\THis\Z', $timestamp);
+}
+ 
+// Escapes a string of characters
+function escapeString($string) {
+  return preg_replace('/([\,;])/','\\\$1', $string);
+}
+ 
+ $nl = "\r\n";
+// 3. Echo out the ics file's contents
+?>
+BEGIN:VCALENDAR<?= $nl ?>
+VERSION:2.0<?= $nl ?>
+PRODID:-//hacksw/handcal//NONSGML v1.0//EN<?= $nl ?>
+CALSCALE:GREGORIAN<?= $nl ?>
+BEGIN:VEVENT<?= $nl ?>
+DTEND:<?= dateToCal($dateend) ?><?= $nl ?>
+UID:<?= uniqid() ?><?= $nl ?>
+DTSTAMP:<?= dateToCal(time()) ?><?= $nl ?>
+LOCATION:<?= escapeString($address) ?><?= $nl ?>
+DESCRIPTION:<?= escapeString($description) ?><?= $nl ?>
+URL;VALUE=URI:<?= escapeString($uri) ?><?= $nl ?>
+SUMMARY:<?= escapeString($summary) ?><?= $nl ?>
+DTSTART:<?= dateToCal($datestart) ?><?= $nl ?>
+END:VEVENT<?= $nl ?>
+END:VCALENDAR<?= $nl ?>
